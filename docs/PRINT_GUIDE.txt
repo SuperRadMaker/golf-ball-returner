@@ -1,0 +1,15 @@
+Golf Ball Return - printable parts (all files are already in print orientation, no supports)
+
+Part           Qty  Settings
+base.stl        1   3 walls, 15% infill (184 x 108 mm footprint)
+ramp.stl        1   2 walls, 10% infill
+sled.stl        1   4 walls, 30% infill - keep it light
+crossbar.stl    1   4 walls, 40% infill
+guide.stl       1   prints upside down as exported
+sector.stl      1   4 walls, 50% infill, big gear face down
+pinion.stl      1   100% infill
+spacer.stl      1   any
+lid.stl         1   any
+
+PLA or PETG, 0.2 mm layers. Fits a 220 x 220 mm bed.
+Full assembly and wiring instructions: README.md in the repository.

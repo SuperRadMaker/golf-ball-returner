@@ -11,6 +11,9 @@ for p in ${1:-$PARTS}; do
   openscad -q -D "part=\"$p\"" -o "../stl/$p.stl" "$SCAD"
 done
 [ "${1:-}" != "" ] && exit 0
+# one-file download of every part + print guide
+rm -f ../golf_ball_return_stl.zip
+zip -q -j -9 ../golf_ball_return_stl.zip ../stl/*.stl ../docs/PRINT_GUIDE.txt
 RUN=""; command -v xvfb-run >/dev/null && [ -z "${DISPLAY:-}" ] && RUN="xvfb-run -a"
 png() { $RUN openscad -q --imgsize=1600,1100 --colorscheme=Tomorrow --view=axes -o "../images/$1.png" "${@:2}" "$SCAD"; }
 png assembly_ready   -D 'part="assembly"' -D 'cycle_deg=0'   --camera=15,15,10,55,0,325,560

@@ -47,7 +47,7 @@ Return speed and distance depend on the surface. The script assumes a stimp-10 g
 
 ## Printed parts
 
-STLs are in `stl/`, already in print orientation, and none need supports. Use PLA or PETG with 0.2 mm layers.
+STLs are in `stl/`, already in print orientation, and none need supports. Use PLA or PETG with 0.2 mm layers. [`golf_ball_return_stl.zip`](golf_ball_return_stl.zip) has all of them plus a print guide in one download.
 
 | Part | Qty | Notes |
 |---|---|---|
@@ -139,7 +139,7 @@ At power-up the firmware fires one empty kick to sync the gear. If it never sees
 Everything is parametric in `cad/golf_returner.scad` and uses OpenSCAD 2021.01 or newer.
 
 ```bash
-cad/build.sh                 # export all STLs + render images
+cad/build.sh                 # export all STLs, the zip and render images
 cad/build.sh sled            # export one part
 cad/check.sh                 # interference check across the kick cycle
 python3 docs/sector_sim.py   # re-simulate sector/rack contact, regenerates cad/stroke_table.scad
