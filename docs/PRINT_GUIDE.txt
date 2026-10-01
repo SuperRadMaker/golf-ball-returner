@@ -2,7 +2,7 @@ Golf Ball Return - printable parts (all files are already in print orientation, 
 
 Part           Qty  Settings
 base.stl        1   3 walls, 15% infill (184 x 108 mm footprint)
-ramp.stl        1   2 walls, 10% infill
+ramp.stl        1   3 walls, 10% infill (162 x 120 x 50 mm, prints as exported)
 sled.stl        1   4 walls, 30% infill - keep it light
 crossbar.stl    1   4 walls, 40% infill
 guide.stl       1   prints upside down as exported

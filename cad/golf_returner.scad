@@ -38,22 +38,51 @@ chw_l     = [Y0, -ch_half];         // channel wall on the -Y side (= outer wall
 chw_r     = [ch_half, 30];          // channel wall on the +Y side
 ch_end    = 101;          // channel side walls end here
 
-// pocket floor profile (ball rolls over the crest, drops into a dip,
-// then the floor falls gently toward the paddle so the ball follows it)
-crest_z      = 16;        // height where the ramp meets the base
-pocket_z     = 6;         // bottom of the dip
-dip_len      = 28;
-pocket_slope = 2.5;       // deg, falling toward +X
+// Floor profile along the ball line, shared by the ramp and the base.
+// The ball climbs a SHORT up-ramp, rolls over a rounded crest, then runs down
+// a slightly LONGER funnel to the paddle, where it rests on the IR sensor.
+// Vertices are joined by straight runs with parabolic blends (no kinks).
+ramp_len     = 150;       // ramp part, x = -150 .. 0
+up_len       = 80;        // short climb from the front lip to the crest
+lip_z        = 1.5;       // front lip thickness
+down_slope   = 5;         // deg, crest -> ball rest
+stroke_slope = 2.5;       // deg, rest -> back of pocket (ball follows paddle)
+knee_x       = 40;        // where the down-ramp eases into the stroke slope
 pocket_end   = 99;
-function floor_z(x) = x < dip_len
-    ? pocket_z + (crest_z - pocket_z) * (1 + cos(180 * x / dip_len)) / 2
-    : pocket_z - (x - dip_len) * tan(pocket_slope);
+floor_end_z  = 2.9;
+knee_z       = floor_end_z + (pocket_end - knee_x) * tan(stroke_slope);
+crest_x      = -ramp_len + up_len;
+crest_z      = knee_z + (knee_x - crest_x) * tan(down_slope);
+prof_pts   = [[-400, lip_z], [-ramp_len + 8, lip_z], [crest_x, crest_z],
+              [knee_x, knee_z], [pocket_end, floor_end_z],
+              [400, floor_end_z - (400 - pocket_end) * tan(stroke_slope)]];
+prof_blend = [0, 16, 30, 16, 0, 0];
+function _vsum(v, i = 0) = i < len(v) ? v[i] + _vsum(v, i + 1) : 0;
+function _seg(x, i = 0) = (i >= len(prof_pts) - 2 || x < prof_pts[i + 1][0]) ? i : _seg(x, i + 1);
+function _slope(i) = (prof_pts[i + 1][1] - prof_pts[i][1]) / (prof_pts[i + 1][0] - prof_pts[i][0]);
+function _lin(x) = let(i = _seg(x)) prof_pts[i][1] + _slope(i) * (x - prof_pts[i][0]);
+function _corr(x, i) = let(b = prof_blend[i], xi = prof_pts[i][0], zi = prof_pts[i][1],
+                           si = _slope(i - 1), so = _slope(i))
+    (b > 0 && abs(x - xi) < b / 2)
+        ? (zi + si * (x - xi) + (so - si) / (2 * b) * pow(x - xi + b / 2, 2))
+          - (zi + (x < xi ? si : so) * (x - xi))
+        : 0;
+function floor_z(x) = _lin(x) + _vsum([for (i = [1 : len(prof_pts) - 2]) _corr(x, i)]);
+
+// funnel: 108 mm mouth (regulation cup) narrowing to the 48 mm channel
+funnel_mouth = 54;                    // half width at the front lip
+funnel_wall  = 6;                     // matches the base channel walls
+dish_max     = 4;                     // floor rises this much at the walls
+function _t(x)    = (x + ramp_len) / ramp_len;               // 0 at lip, 1 at base
+function fun_hw(x) = ch_half + (funnel_mouth - ch_half) * (1 + cos(180 * _t(x))) / 2;
+function fun_dish(x, v) = dish_max * sin(180 * _t(x)) * pow(abs(v), 4);
+function fun_wall_z(x) = max(floor_z(x) + 26, H + 0.6 * x);   // 50 mm where it meets the base
 
 // --------------------------- kicker / sled --------------------------------
 paddle_x  = 52;           // paddle face at rest (sled fully forward)
 paddle_t  = 4;
 paddle_hw = 20;           // half width
-paddle_z0 = 7;
+paddle_z0 = 7;            // floor under the paddle is ~5 mm
 top_z     = 53;           // top of beam flange / paddle
 beam_x1   = 140;          // rear end of beam at rest
 beam_hw   = 5;            // beam body half width
@@ -162,7 +191,7 @@ module base() {
             // perfboard standoffs
             for (p = pcb_holes) zcyl(p[0], p[1], 6, 0, floor_t + 6);
             // ball-sensor module shelf (TCRT5000 board rests on it)
-            box([4, 38], [chw_r[1], chw_r[1] + 4], [17, 19.5]);
+            box([4, 38], [chw_r[1], chw_r[1] + 4], [ball_rest_z - 10.2, ball_rest_z - 7.7]);
             // motor cradle under the motor body
             box([mot_x - 14, mot_x + 14], [34, 66], [0, mot_z - 21.15 - 0.3]);
         }
@@ -198,19 +227,56 @@ module base() {
 }
 
 // ===========================================================================
-//  RAMP  (bolts on with two dovetails, funnel = regulation cup width 108 mm)
+//  RAMP  short up-ramp, rounded crest, longer funnel down to the base.
+//  Joins the base with two dovetails; floor and walls continue seamlessly.
 // ===========================================================================
-ramp_len = 170;
-ramp_hw  = 57;
+ramp_nx = 75;     // sections along X
+ramp_ny = 24;     // sections across the floor
+
+module ramp_floor() {
+    pts = concat(
+        [for (i = [0 : ramp_nx], j = [0 : ramp_ny])
+            let(x = -ramp_len + ramp_len * i / ramp_nx, v = -1 + 2 * j / ramp_ny)
+            [x, v * fun_hw(x), floor_z(x) + fun_dish(x, v)]],
+        [for (i = [0 : ramp_nx], j = [0 : ramp_ny])
+            let(x = -ramp_len + ramp_len * i / ramp_nx, v = -1 + 2 * j / ramp_ny)
+            [x, v * fun_hw(x), 0]]);
+    n = (ramp_nx + 1) * (ramp_ny + 1);
+    function T(i, j) = i * (ramp_ny + 1) + j;
+    function B(i, j) = n + T(i, j);
+    faces = concat(
+        [for (i = [0 : ramp_nx - 1], j = [0 : ramp_ny - 1]) each
+            [[T(i, j), T(i, j + 1), T(i + 1, j + 1)], [T(i, j), T(i + 1, j + 1), T(i + 1, j)],
+             [B(i, j), B(i + 1, j + 1), B(i, j + 1)], [B(i, j), B(i + 1, j), B(i + 1, j + 1)]]],
+        [for (i = [0 : ramp_nx - 1]) each
+            [[T(i, 0), T(i + 1, 0), B(i + 1, 0)], [T(i, 0), B(i + 1, 0), B(i, 0)],
+             [T(i + 1, ramp_ny), T(i, ramp_ny), B(i, ramp_ny)], [T(i + 1, ramp_ny), B(i, ramp_ny), B(i + 1, ramp_ny)]]],
+        [for (j = [0 : ramp_ny - 1]) each
+            [[T(0, j + 1), T(0, j), B(0, j)], [T(0, j + 1), B(0, j), B(0, j + 1)],
+             [T(ramp_nx, j), T(ramp_nx, j + 1), B(ramp_nx, j + 1)], [T(ramp_nx, j), B(ramp_nx, j + 1), B(ramp_nx, j)]]]);
+    polyhedron(pts, faces, convexity = 6);
+}
+
+module ramp_wall(s) {      // s = +1 / -1 side
+    sec = [for (i = [0 : ramp_nx]) let(x = -ramp_len + ramp_len * i / ramp_nx,
+              yi = s * (fun_hw(x) - 0.6), yo = s * (fun_hw(x) + funnel_wall), zt = fun_wall_z(x))
+              [[x, yi, 0], [x, yo, 0], [x, yo, zt], [x, yi, zt]]];
+    pts = [for (q = sec) each q];
+    function P(i, k) = 4 * i + k;
+    raw = concat(
+        [for (i = [0 : ramp_nx - 1], k = [0 : 3]) each
+            [[P(i, k), P(i + 1, k), P(i + 1, (k + 1) % 4)], [P(i, k), P(i + 1, (k + 1) % 4), P(i, (k + 1) % 4)]]],
+        [[P(0, 0), P(0, 1), P(0, 2)], [P(0, 0), P(0, 2), P(0, 3)],
+         [P(ramp_nx, 0), P(ramp_nx, 2), P(ramp_nx, 1)], [P(ramp_nx, 0), P(ramp_nx, 3), P(ramp_nx, 2)]]);
+    // mirrored side needs the opposite winding
+    faces = s > 0 ? raw : [for (f = raw) [f[0], f[2], f[1]]];
+    polyhedron(pts, faces, convexity = 4);
+}
+
 module ramp() {
     union() {
-        translate([0, ramp_hw, 0]) rotate([90, 0, 0]) linear_extrude(2 * ramp_hw)
-            polygon([[-ramp_len, 0], [0, 0], [0, crest_z], [-ramp_len, 1.2]]);
-        // funnel walls: 108 mm mouth narrowing to the 48 mm channel
-        for (s = [-1, 1]) hull() {
-            translate([-ramp_len + 2, s * (54 + 1.5), 0]) cylinder(d = 3, h = 1.2 + 10);
-            translate([-1.5, s * (ch_half + 1.5), 0]) cylinder(d = 3, h = crest_z + 10);
-        }
+        ramp_floor();
+        for (s = [-1, 1]) ramp_wall(s);
         for (y = [-12, 12]) translate([0, y, 0]) linear_extrude(5) dovetail2d(0);
     }
 }

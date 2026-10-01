@@ -9,6 +9,8 @@ ball back down the ramp to you.
 
 ![assembly](images/assembly_ready.png)
 
+![side profile](images/profile.png)
+
 | Ready (sled forward, toothless arc up) | Cocked (last tooth about to slip off) |
 |---|---|
 | ![](images/section_ready.png) | ![](images/section_cocked.png) |
@@ -17,13 +19,16 @@ ball back down the ramp to you.
 
 ## How it works
 
-1. The ball climbs a 5° ramp (16 mm high). The ramp has a funnel as wide as a real 108 mm cup.
-2. It drops into a 10 mm deep pocket. The pocket floor slopes 2.5° toward the paddle, so the ball always settles against it.
-3. An IR sensor in the pocket wall (TCRT5000) sees the ball. The firmware waits 0.45 s for the ball to settle.
+1. The ball climbs a short 80 mm up-ramp at about 11° to a rounded crest 14 mm high.
+2. It rolls down a longer 100 mm funnel at 5° and comes to rest against the paddle.
+   - The walls narrow from a 108 mm mouth, the width of a real cup, to the 48 mm channel.
+   - The floor rises 4 mm near the walls, so off-centre balls drift to the middle.
+   - A ball that bounces off the paddle has to climb 7.8 mm back to the crest to escape.
+3. The ball's rest point is the activation switch. An IR sensor (TCRT5000) looks through the channel wall at it. It has no moving parts, so even a slow ball triggers it. The firmware waits 0.45 s for the ball to settle.
 4. The stepper turns one revolution of the sector. That is 5,600 micro-steps, about 1.2 s.
    - **0–100°:** the toothless arc passes under the rack and nothing moves.
    - **100–266°:** five teeth drag the sled back 33 mm and stretch the bands. The ball rolls back with the paddle.
-   - **266°:** the last tooth slips off and the bands fire the sled forward. The paddle pushes the ball up out of the pocket.
+   - **266°:** the last tooth slips off and the bands fire the sled forward. The paddle knocks the ball back up the funnel, over the crest and down the short ramp to you.
    - **266–360°:** the sector parks with its toothless arc under the rack.
 5. A microswitch on the guide rail confirms the sled snapped home. The firmware uses that to re-sync every cycle and to detect jams.
 
@@ -52,7 +57,7 @@ STLs are in `stl/`, already in print orientation, and none need supports. Use PL
 | Part | Qty | Notes |
 |---|---|---|
 | `base.stl` | 1 | 184 × 108 mm footprint. 3 walls, 15 % infill. The pocket floor is solid, so infill keeps it light. |
-| `ramp.stl` | 1 | 182 × 114 mm including dovetails. 2 walls, 10 % infill. |
+| `ramp.stl` | 1 | Short up-ramp, crest and funnel. 162 × 120 × 50 mm including dovetails. 3 walls, 10 % infill. |
 | `sled.stl` | 1 | Prints upside down on its flat top. 4 walls, 30 % infill. Keep it light, because sled mass robs kick energy. |
 | `crossbar.stl` | 1 | Carries the sled-side band pins and the switch striker. 4 walls, 40 % infill. |
 | `guide.stl` | 1 | Inverted C-channel, printed upside down. Its rear face is the sled's front stop. |
